@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream, SocketAddr};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -26,6 +26,13 @@ fn main() {
                         list.retain(|(client_addr, _)| *client_addr != addr);
                     }
                     break;
+                } else {
+                    let mut list = connections_clone.lock().unwrap();
+                    for (client_addr, stream) in list.iter_mut() {
+                        if *client_addr != addr {
+                            stream.write_all(&buffer[..bytes_read]).unwrap();
+                        }
+                    }
                 }
             }
         });
