@@ -30,7 +30,9 @@ fn main() {
                     let mut list = connections_clone.lock().unwrap();
                     for (client_addr, stream) in list.iter_mut() {
                         if *client_addr != addr {
-                            stream.write_all(&buffer[..bytes_read]).unwrap();
+                            if let Err(e) = stream.write_all(&buffer [..bytes_read]) {
+                                eprintln!("Failed to write to {}: {}", client_addr, e);
+                            }
                         }
                     }
                 }
