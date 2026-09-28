@@ -18,7 +18,10 @@ fn main() {
             }
 
             let mut buffer = [0; 512];
+            let mut pending: Vec<u8> = Vec::new();
+
             loop {
+
                 let bytes_read = match stream.read(&mut buffer) {
                     Ok(0) | Err(_) => {
                         let mut list = connections_clone.lock().unwrap();
@@ -28,11 +31,18 @@ fn main() {
 
                     Ok(n) => n,
                 };
-                let mut list = connections_clone.lock().unwrap();
-                for (client_addr, stream) in list.iter_mut() {
-                    if *client_addr != addr {
-                        if let Err(e) = stream.write_all(&buffer [..bytes_read]) {
-                            eprintln!("Failed to write to {}: {}", client_addr, e);
+
+                pending.extend_from_slice(&buffer[..bytes_read]);
+
+                while let Some(i) = pending.iter().position(|&b| b==b'\n') {
+                    let message: Vec<u8> = pending.drain(..=i).collect();
+                    let mut list = connections_clone.lock().unwrap();
+
+                    for (client_addr, stream) in list.iter_mut() {
+                        if *client_addr != addr {
+                            if let Err(e) = stream.write_all(&message) {
+                                eprintln!("Failed to write to {}: {}", client_addr, e);
+                            }
                         }
                     }
                 }
