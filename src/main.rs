@@ -19,23 +19,24 @@ fn main() {
 
             let mut buffer = [0; 512];
             loop {
-                let bytes_read = stream.read(&mut buffer).unwrap();
-                if bytes_read==0 {
-                    {
+                let bytes_read = match stream.read(&mut buffer) {
+                    Ok(0) | Err(_) => {
                         let mut list = connections_clone.lock().unwrap();
                         list.retain(|(client_addr, _)| *client_addr != addr);
+                        break;
                     }
-                    break;
-                } else {
-                    let mut list = connections_clone.lock().unwrap();
-                    for (client_addr, stream) in list.iter_mut() {
-                        if *client_addr != addr {
-                            if let Err(e) = stream.write_all(&buffer [..bytes_read]) {
-                                eprintln!("Failed to write to {}: {}", client_addr, e);
-                            }
+
+                    Ok(n) => n,
+                };
+                let mut list = connections_clone.lock().unwrap();
+                for (client_addr, stream) in list.iter_mut() {
+                    if *client_addr != addr {
+                        if let Err(e) = stream.write_all(&buffer [..bytes_read]) {
+                            eprintln!("Failed to write to {}: {}", client_addr, e);
                         }
                     }
                 }
+
             }
         });
    }
